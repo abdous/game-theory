@@ -118,3 +118,15 @@ def plot_flow_network(a, b, r, title="Flight Flow Network", save_fig=False):
     ax.legend(handles=[red_line, green_line], loc="upper right")
 
     plt.show()
+
+    # Text summary
+    print("\nFeasible transitions:")
+    for i in range(p):
+        for j in range(p):
+            if i != j and b[i] + r[i][j] <= a[j]:
+                used = flow_dict.get(f"L{i+1}", {}).get(f"R{j+1}", 0)
+                mark = "🟥 Used" if used else "🟩 Not used"
+                print(f"  L{i+1:<2} → R{j+1:<2}   {mark}")
+
+    print(f"\n✅ Maximum flow = {flow_value}")
+    print(f"✈️  Minimum planes = {min_planes}")
