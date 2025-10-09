@@ -54,7 +54,7 @@ def min_planes_via_flow(a, b, r):
     return min_planes, flow_value, flow_dict, G, source, sink
 
 
-def plot_flow_network(a, b, r, title="Flight Flow Network", save_fig=False):
+def plot_flow_network(a, b, r, title="Flight Flow Network"):
     """
     Calls the algorithm and plots the flow network.
     Colors:
@@ -102,13 +102,34 @@ def plot_flow_network(a, b, r, title="Flight Flow Network", save_fig=False):
         ax=ax,
     )
 
+    # Adding labels for edges (flow, capacity)
+    edge_labels = {}
+    for u, v in G.edges():
+        flow_val = flow_dict.get(u, {}).get(v, 0)
+        cap = G[u][v].get("capacity", 0)
+        if u.startswith("L") and v.startswith("R"):
+            edge_labels[(u, v)] = f"({flow_val},{cap})"
+        elif u == source or v == sink:
+            edge_labels[(u, v)] = f"({flow_val},{cap})"  # optional, include if you want
+        else:
+            edge_labels[(u, v)] = ""
+
+    nx.draw_networkx_edge_labels(
+        G,
+        pos,
+        edge_labels=edge_labels,
+        label_pos=0.3,
+        font_color="blue",
+        ax=ax,
+    )
+
     plt.axis("off")
     plt.title(
         f"{title}\n(Max Flow = {flow_value}, Min Planes = {min_planes})",
         fontsize=12,
     )
 
-    # Legend
+    # Arrow Legend
     red_line = mlines.Line2D(
         [], [], color="red", marker=">", markersize=10, label="Used transition"
     )
@@ -130,3 +151,11 @@ def plot_flow_network(a, b, r, title="Flight Flow Network", save_fig=False):
 
     print(f"\n✅ Maximum flow = {flow_value}")
     print(f"✈️  Minimum planes = {min_planes}")
+
+
+# --- Example ---
+a = [8.0, 11.0, 12.0]
+b = [10.0, 13.0, 15.0]
+r = [[0, 1, 2], [1, 0, 2], [2, 1, 0]]
+
+plot_flow_network(a, b, r)
