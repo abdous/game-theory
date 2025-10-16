@@ -3,6 +3,57 @@ import matplotlib.pyplot as plt
 import matplotlib.lines as mlines
 
 
+def reconstruct_schedules(flow_dict, p):
+    """
+    Reconstruct the actual flight sequences for each plane from the flow solution.
+
+    Parameters
+    ----------
+    flow_dict : dict
+        Flow dictionary from networkx showing used edges.
+    p : int
+        Number of flights.
+
+    Returns
+    -------
+    schedules : list of list
+        Each sublist contains the flight sequence for one plane.
+    """
+    # Build adjacency from flow (only edges with flow > 0)
+    # Edge from Li to Rj means flight i is followed by flight j
+    adjacency = {}
+    in_degree = {i: 0 for i in range(p)}
+
+    for i in range(p):
+        Li = f"L{i+1}"
+        if Li in flow_dict:
+            for Rj, flow_val in flow_dict[Li].items():
+                if Rj.startswith("R") and flow_val > 0:
+                    j = int(Rj[1:]) - 1
+                    adjacency[i] = j
+                    in_degree[j] += 1
+
+    # Find starting flights (no incoming edges in flow)
+    schedules = []
+    visited = set()
+
+    for start_flight in range(p):
+        if start_flight not in visited and in_degree[start_flight] == 0:
+            # Build chain starting from this flight
+            chain = []
+            current = start_flight
+
+            while current is not None and current not in visited:
+                visited.add(current)
+                chain.append(current + 1)  # Convert to 1-indexed
+                current = adjacency.get(current)
+
+            if chain:
+                schedules.append(chain)
+
+    return schedules
+
+
 def min_planes_via_flow(a, b, r):
     """
     Solve the minimum number of planes problem using
@@ -25,6 +76,8 @@ def min_planes_via_flow(a, b, r):
         The constructed flow network.
     source, sink : str
         Source and sink node names.
+    schedules : list of list
+        Flight sequences for each plane.
     """
     p = len(a)
     G = nx.DiGraph()
@@ -35,7 +88,7 @@ def min_planes_via_flow(a, b, r):
     left_nodes = [f"L{i+1}" for i in range(p)]
     right_nodes = [f"R{i+1}" for i in range(p)]
 
-    # Connect source → left, right → sink
+    # Connect source -> left, right -> sink
     for u in left_nodes:
         G.add_edge(source, u, capacity=1)
     for v in right_nodes:
@@ -51,7 +104,10 @@ def min_planes_via_flow(a, b, r):
     flow_value, flow_dict = nx.maximum_flow(G, source, sink)
     min_planes = p - flow_value
 
-    return min_planes, flow_value, flow_dict, G, source, sink
+    # Reconstruct schedules
+    schedules = reconstruct_schedules(flow_dict, p)
+
+    return min_planes, flow_value, flow_dict, G, source, sink, schedules
 
 
 def plot_flow_network(a, b, r, title="Flight Flow Network"):
@@ -62,7 +118,9 @@ def plot_flow_network(a, b, r, title="Flight Flow Network"):
       Green = feasible but unused
       Black = source/sink edges
     """
-    min_planes, flow_value, flow_dict, G, source, sink = min_planes_via_flow(a, b, r)
+    min_planes, flow_value, flow_dict, G, source, sink, schedules = min_planes_via_flow(
+        a, b, r
+    )
     p = len(a)
 
     left_nodes = [f"L{i+1}" for i in range(p)]
@@ -110,7 +168,7 @@ def plot_flow_network(a, b, r, title="Flight Flow Network"):
         if u.startswith("L") and v.startswith("R"):
             edge_labels[(u, v)] = f"({flow_val},{cap})"
         elif u == source or v == sink:
-            edge_labels[(u, v)] = f"({flow_val},{cap})"  # optional, include if you want
+            edge_labels[(u, v)] = f"({flow_val},{cap})"
         else:
             edge_labels[(u, v)] = ""
 
@@ -141,16 +199,43 @@ def plot_flow_network(a, b, r, title="Flight Flow Network"):
     plt.show()
 
     # Text summary
-    print("\nFeasible transitions:")
+    print("\n" + "=" * 60)
+    print("FLIGHT SCHEDULES PER PLANE")
+    print("=" * 60)
+    for plane_idx, schedule in enumerate(schedules, 1):
+        print(f"\nPlane {plane_idx}: Flights {schedule}")
+        for seq_idx, flight_num in enumerate(schedule):
+            flight_idx = flight_num - 1
+            start_time = a[flight_idx]
+            end_time = b[flight_idx]
+
+            if seq_idx == 0:
+                print(f"  Flight {flight_num}: {start_time:.1f} -> {end_time:.1f}")
+            else:
+                prev_flight_num = schedule[seq_idx - 1]
+                prev_idx = prev_flight_num - 1
+                turnaround = r[prev_idx][flight_idx]
+                arrival_at_origin = b[prev_idx] + turnaround
+                wait_time = start_time - arrival_at_origin
+                print(
+                    f"  Flight {flight_num}: {start_time:.1f} -> {end_time:.1f} "
+                    f"(turnaround: {turnaround:.1f}h, wait: {wait_time:.1f}h)"
+                )
+
+    print("\n" + "=" * 60)
+    print("FEASIBLE TRANSITIONS")
+    print("=" * 60)
     for i in range(p):
         for j in range(p):
             if i != j and b[i] + r[i][j] <= a[j]:
                 used = flow_dict.get(f"L{i+1}", {}).get(f"R{j+1}", 0)
-                mark = "🟥 Used" if used else "🟩 Not used"
-                print(f"  L{i+1:<2} → R{j+1:<2}   {mark}")
+                mark = "[USED]" if used else "[NOT USED]"
+                print(f"  L{i+1:<2} -> R{j+1:<2}   {mark}")
 
-    print(f"\n Maximum flow = {flow_value}")
-    print(f" Minimum planes = {min_planes}")
+    print(f"\n{'='*60}")
+    print(f"[+] Maximum flow = {flow_value}")
+    print(f"[*] Minimum planes = {min_planes}")
+    print(f"{'='*60}\n")
 
 
 # --- Example ---
