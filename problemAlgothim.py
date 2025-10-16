@@ -86,3 +86,11 @@ def flight_network(a, b, r):
                 capacity[(Li, Rj)] = 1
 
     return source, sink, capacity, adj, left, right
+
+
+# running the algorithm
+def minimum_number_of_planes(a, b, r):
+    source, sink, capacity, adj, left, right = flight_network(a, b, r)
+    max_flow, flow = edmonds_karp_concept(capacity, adj, source, sink)
+    min_planes = len(a) - max_flow
+    return min_planes, max_flow, flow
