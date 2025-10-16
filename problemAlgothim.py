@@ -53,3 +53,36 @@ def edmonds_karp_concept(capacity, adj, source, sink):
         max_flow += bottleneck
 
     return max_flow, flow
+
+
+def flight_network(a, b, r):
+    p = len(a)
+    source, sink = "s", "t"
+    adj = defaultdict(list)
+    capacity = defaultdict(int)
+
+    # Left (L1..Lp) and Right (R1..Rp)
+    left = [f"L{i+1}" for i in range(p)]
+    right = [f"R{i+1}" for i in range(p)]
+
+    # source → left, right → sink
+    for L in left:
+        adj[source].append(L)
+        adj[L].append(source)
+        capacity[(source, L)] = 1
+
+    for R in right:
+        adj[R].append(sink)
+        adj[sink].append(R)
+        capacity[(R, sink)] = 1
+
+    # feasible transitions
+    for i in range(p):
+        for j in range(p):
+            if i != j and b[i] + r[i][j] <= a[j]:
+                Li, Rj = f"L{i+1}", f"R{j+1}"
+                adj[Li].append(Rj)
+                adj[Rj].append(Li)
+                capacity[(Li, Rj)] = 1
+
+    return source, sink, capacity, adj, left, right
