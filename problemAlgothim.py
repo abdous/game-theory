@@ -9,7 +9,7 @@ from collections import deque, defaultdict
 
 
 def shortest_path(capacity, flow, source, sink, adj):
-    """we trying to find the Find shortest augmenting path using BFS."""
+    """Finding the shortest augmenting path using BFS."""
     parent = {source: None}
     queue = deque([source])
 
@@ -22,3 +22,34 @@ def shortest_path(capacity, flow, source, sink, adj):
                     return parent
                 queue.append(v)
     return None
+
+
+def edmonds_karp_concept(capacity, adj, source, sink):
+    """Compute max flow using Edmonds-Karp."""
+    flow = defaultdict(int)
+    max_flow = 0
+
+    while True:
+        parent = shortest_path(capacity, flow, source, sink, adj)
+        if not parent:
+            break  # if no more augmenting path
+
+        # Finding the minimum residual capacity along the path
+        v = sink
+        bottleneck = float("inf")
+        while v != source:
+            u = parent[v]
+            bottleneck = min(bottleneck, capacity[(u, v)] - flow[(u, v)])
+            v = u
+
+        # Augment the flow along the path
+        v = sink
+        while v != source:
+            u = parent[v]
+            flow[(u, v)] += bottleneck
+            flow[(v, u)] -= bottleneck
+            v = u
+
+        max_flow += bottleneck
+
+    return max_flow, flow
