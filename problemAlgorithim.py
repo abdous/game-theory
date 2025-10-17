@@ -225,12 +225,11 @@ def flow_plotting(a, b, r):
                 print(f"  {L} → {R}: {mark}")
 
 
-# small test case
+# small test case, can also randomly generate more complex cases
 a = [8.0, 11.0, 12.0]
 b = [10.0, 13.0, 15.0]
 r = [[0, 1, 2], [1, 0, 2], [2, 1, 0]]
 
-flow_plotting(a, b, r)
 
 min_planes, max_flow, flow, capacity, left, right, source, sink = (
     minimum_number_of_planes(a, b, r)
@@ -242,3 +241,4 @@ print(f"Minimum Planes = {min_planes}")
 print("\nplane schedules:")
 for i, chain in enumerate(planes, start=1):
     print(f"  Plane {i}: " + " → ".join(f"Flight {f}" for f in chain))
+flow_plotting(a, b, r)
