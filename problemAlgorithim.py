@@ -66,7 +66,7 @@ def flight_network(a, b, r):
     """
     p = len(a)
     source, sink = "s", "t"
-    adj = defaultdict(list)  # adjacency list
+    adj = defaultdict(list)
     capacity = defaultdict(int)
 
     left = [f"L{i+1}" for i in range(p)]
@@ -113,7 +113,7 @@ def planes_Schedules(flow, left, right):
     planes = []
     next_flight = {}
 
-    # Adjacent mapping from L_i to R_j for used transitions
+    # Adjacent mapping from Li to Rj for used transitions
     for L in left:
         for R in right:
             if flow.get((L, R), 0) > 0:
