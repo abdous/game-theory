@@ -1,23 +1,17 @@
-# ------------------------------------------------------------
-#   Edmonds–Karp implementation for the Minimum Planes problem
-# ------------------------------------------------------------
-# This code implements the Edmonds-Karp algorithm to solve the problem
-# as already explain during the presentation of the algorithm.
-# It builds the flow network, computes max-flow using BFS, and reconstructs
-# the minimum number of planes and their flight chains.
-#  Start with 0 flow on all edges
-#  While there exists a path from source (s) to sink (t) with available capacity:
-#       - Find the path using BFS
-#       - Compute the minimum residual capacity (bottleneck)
-#       - Augment flow along the path by that amount
-# When no path remains, the current flow is the maximum flow.
+"""Edmonds–Karp (manual) implementation for the Minimum Planes problem.
+
+This module implements the Edmonds–Karp max-flow algorithm from scratch:
+- BFS to find shortest augmenting paths (shortest in number of edges)
+- explicit residual updates by modifying flow[(u, v)] and flow[(v, u)]
+Time complexity: O(V * E^2) worst-case.
+"""
 
 from collections import deque, defaultdict
 import matplotlib.pyplot as plt
 import matplotlib.lines as mlines
 
 
-def shortest_path(capacity, flow, source, sink, adj):
+def bfs_augmenting_path(capacity, flow, source, sink, adj):
     """Finding the shortest augmenting path using BFS."""
     parent = {source: None}
     queue = deque([source])
@@ -39,7 +33,7 @@ def edmonds_karp_concept(capacity, adj, source, sink):
     max_flow = 0
 
     while True:
-        parent = shortest_path(capacity, flow, source, sink, adj)
+        parent = bfs_augmenting_path(capacity, flow, source, sink, adj)
         if not parent:
             break
 
@@ -83,11 +77,13 @@ def flight_network(a, b, r):
         adj[source].append(L)
         adj[L].append(source)
         capacity[(source, L)] = 1
+        capacity[(L, source)] = 0
 
     for R in right:
         adj[R].append(sink)
         adj[sink].append(R)
         capacity[(R, sink)] = 1
+        capacity[(sink, R)] = 0
 
     # feasible transitions(flight i to possible flight j)
     for i in range(p):
@@ -97,6 +93,7 @@ def flight_network(a, b, r):
                 adj[Li].append(Rj)
                 adj[Rj].append(Li)
                 capacity[(Li, Rj)] = 1
+                capacity[(Rj, Li)] = 0
 
     return source, sink, capacity, adj, left, right
 
@@ -119,7 +116,7 @@ def planes_Schedules(flow, left, right):
     # Adjacent mapping from L_i to R_j for used transitions
     for L in left:
         for R in right:
-            if flow[(L, R)] > 0:
+            if flow.get((L, R), 0) > 0:
                 i = int(L[1:])
                 j = int(R[1:])
                 next_flight[i] = j
@@ -129,7 +126,7 @@ def planes_Schedules(flow, left, right):
     start_nodes = [i for i in range(1, len(left) + 1) if i not in reachable_from]
 
     # Plane route
-    for start in start_nodes:
+    for start in sorted(start_nodes):
         chain = [start]
         cur = start
         while cur in next_flight:
@@ -139,6 +136,29 @@ def planes_Schedules(flow, left, right):
         planes.append(chain)
 
     return planes
+
+
+def get_flow_data(a, b, r):
+    """Return the data flow for automated checks."""
+    min_planes, max_flow, flow, capacity, left, right, source, sink = (
+        minimum_number_of_planes(a, b, r)
+    )
+    # convert defaultdicts to plain dicts (ints) for easy assertions / JSON
+    flow_dict = {k: int(v) for k, v in flow.items()}
+    capacity_dict = {k: int(v) for k, v in capacity.items()}
+    planes = planes_Schedules(flow, left, right)
+
+    return {
+        "min_planes": int(min_planes),
+        "max_flow": int(max_flow),
+        "flow": flow_dict,
+        "capacity": capacity_dict,
+        "left": list(left),
+        "right": list(right),
+        "source": source,
+        "sink": sink,
+        "planes": planes,
+    }
 
 
 def flow_plotting(a, b, r):
@@ -164,7 +184,7 @@ def flow_plotting(a, b, r):
         if capacity[(u, v)] == 0:
             continue
         edges.append((u, v))
-        f = flow[(u, v)]
+        f = flow.get((u, v), 0)
         c = capacity[(u, v)]
         edge_labels[(u, v)] = f"({f},{c})"
         if u == source or v == sink:
@@ -220,7 +240,7 @@ def flow_plotting(a, b, r):
     for L in left:
         for R in right:
             if (L, R) in capacity:
-                f = flow[(L, R)]
+                f = flow.get((L, R), 0)
                 mark = "Red Used" if f > 0 else "Green Not used"
                 print(f"  {L} → {R}: {mark}")
 
@@ -230,15 +250,23 @@ a = [8.0, 11.0, 12.0]
 b = [10.0, 13.0, 15.0]
 r = [[0, 1, 2], [1, 0, 2], [2, 1, 0]]
 
+if __name__ == "__main__":
 
-min_planes, max_flow, flow, capacity, left, right, source, sink = (
-    minimum_number_of_planes(a, b, r)
-)
-planes = planes_Schedules(flow, left, right)
+    min_planes, max_flow, flow, capacity, left, right, source, sink = (
+        minimum_number_of_planes(a, b, r)
+    )
+    planes = planes_Schedules(flow, left, right)
 
-print(f"Maximum Flow = {max_flow}")
-print(f"Minimum Planes = {min_planes}")
-print("\nplane schedules:")
-for i, chain in enumerate(planes, start=1):
-    print(f"  Plane {i}: " + " → ".join(f"Flight {f}" for f in chain))
-flow_plotting(a, b, r)
+    print(f"Maximum Flow = {max_flow}")
+    print(f"Minimum Planes = {min_planes}")
+    print("\nplane schedules:")
+    for i, chain in enumerate(planes, start=1):
+        print(f"  Plane {i}: " + " → ".join(f"Flight {f}" for f in chain))
+
+    from pprint import pprint
+
+    data = get_flow_data(a, b, r)
+    print("\nFlow data:")
+    pprint(data)
+
+    flow_plotting(a, b, r)
